@@ -1,0 +1,44 @@
+{
+  "name": "broken",
+  "version": "0.1",
+  "description": "Deliberately broken flow used to show what static validation catches. Do not fix it.",
+  "start": "greeting",
+  "queues": ["billing"],
+  "nodes": {
+    "greeting": {
+      "type": "play",
+      "prompt": "Hello {customer.first_name}, welcome.",
+      "next": "main_menu"
+    },
+    "main_menu": {
+      "type": "menu",
+      "prompt": "Press 1 for billing or 2 for support.",
+      "options": {
+        "1": { "label": "Billing", "next": "transfer_billing", "intents": ["billing"] },
+        "2": { "label": "Support", "next": "support_info" }
+      },
+      "max_retries": 15
+    },
+    "support_info": {
+      "type": "play",
+      "prompt": "Support is available online.",
+      "next": "support_more"
+    },
+    "support_more": {
+      "type": "play",
+      "prompt": "Visit our website for help.",
+      "next": "support_info"
+    },
+    "transfer_billing": {
+      "type": "transfer",
+      "queue": "bililng",
+      "priority": 3,
+      "reason": "billing_request"
+    },
+    "orphan": {
+      "type": "play",
+      "prompt": "Nobody can reach this node.",
+      "next": "nowhere"
+    }
+  }
+}

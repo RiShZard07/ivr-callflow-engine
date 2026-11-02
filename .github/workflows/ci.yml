@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m pytest -q
+      - name: Static flow validation
+        run: python -m ivr validate flows/care_v1.json flows/care_v2.json
+      - name: Scripted call-flow cases
+        run: python -m ivr test flows/tests
+      - name: Release gate
+        # Exits 1 unless both flows validate clean, every scripted case passes,
+        # v2 containment beats v1 with p < 0.01, v2 abandonment is not more
+        # than one point worse, and no simulated call ends in an error.
+        run: python -m ivr demo --check

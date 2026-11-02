@@ -1,0 +1,151 @@
+{
+  "name": "care",
+  "version": "1.0",
+  "description": "Baseline customer care flow. Callers pick a topic, enter and confirm an account number, and are transferred to a queue. The only self-service is a zip-code outage check.",
+  "start": "greeting",
+  "queues": ["billing", "tech_support", "account_services", "general"],
+  "nodes": {
+    "greeting": {
+      "type": "play",
+      "prompt": "Thank you for calling customer care. This call may be recorded.",
+      "next": "main_menu"
+    },
+    "main_menu": {
+      "type": "menu",
+      "prompt": "For billing and payments, press 1. For internet or TV service problems, press 2. For data usage and plan questions, press 3. For anything else, or to speak with an agent, press 4.",
+      "options": {
+        "1": {
+          "label": "Billing and payments",
+          "next": "collect_account_billing",
+          "intents": ["billing", "bill", "balance", "payment", "pay", "invoice", "charges"]
+        },
+        "2": {
+          "label": "Service problems",
+          "next": "collect_zip",
+          "intents": ["outage", "internet", "service", "not working", "tv", "down", "slow"]
+        },
+        "3": {
+          "label": "Data usage and plans",
+          "next": "collect_account_data",
+          "intents": ["data", "usage", "plan", "gigabytes"]
+        },
+        "4": {
+          "label": "Agent",
+          "next": "transfer_general",
+          "intents": ["agent", "representative", "person", "operator", "something else", "other"]
+        }
+      },
+      "invalid_prompt": "Sorry, that is not a valid option.",
+      "timeout_prompt": "I did not hear a selection.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_general",
+      "timeout_seconds": 5
+    },
+    "collect_account_billing": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_billing",
+      "next": "transfer_billing"
+    },
+    "transfer_billing": {
+      "type": "transfer",
+      "queue": "billing",
+      "priority": 3,
+      "reason": "billing_request"
+    },
+    "collect_zip": {
+      "type": "collect",
+      "prompt": "Please enter the five digit zip code of your service address, followed by the pound key.",
+      "variable": "zip",
+      "min_digits": 5,
+      "max_digits": 5,
+      "terminator": "#",
+      "validation": "digits",
+      "confirm": false,
+      "invalid_prompt": "That does not look like a five digit zip code.",
+      "timeout_prompt": "I did not get your zip code.",
+      "max_retries": 2,
+      "on_max_retries": "collect_account_tech",
+      "next": "outage_check"
+    },
+    "outage_check": {
+      "type": "action",
+      "name": "outage_check",
+      "on_success": "outage_branch",
+      "on_failure": "collect_account_tech"
+    },
+    "outage_branch": {
+      "type": "branch",
+      "conditions": [
+        { "when": "outage == true", "next": "outage_known" }
+      ],
+      "default": "collect_account_tech"
+    },
+    "outage_known": {
+      "type": "play",
+      "prompt": "We are aware of a service outage in zip code {zip}. Our technicians are working on it and expect service to be restored by {outage_eta}. We apologize for the inconvenience.",
+      "next": "goodbye"
+    },
+    "collect_account_tech": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_tech",
+      "next": "transfer_tech"
+    },
+    "transfer_tech": {
+      "type": "transfer",
+      "queue": "tech_support",
+      "priority": 2,
+      "reason": "service_problem"
+    },
+    "collect_account_data": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_account_services",
+      "next": "transfer_account_services"
+    },
+    "transfer_account_services": {
+      "type": "transfer",
+      "queue": "account_services",
+      "priority": 3,
+      "reason": "plan_question"
+    },
+    "transfer_general": {
+      "type": "transfer",
+      "queue": "general",
+      "priority": 4,
+      "reason": "caller_request_or_fallback"
+    },
+    "goodbye": {
+      "type": "hangup",
+      "prompt": "Thank you for calling. Goodbye."
+    }
+  }
+}

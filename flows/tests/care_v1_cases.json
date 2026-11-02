@@ -1,0 +1,121 @@
+{
+  "cases": [
+    {
+      "name": "v1 billing: account is collected, confirmed and transferred to billing",
+      "flow": "../care_v1.json",
+      "ani": "5550123456",
+      "inputs": ["dtmf:1", "dtmf:4155550124#", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "billing",
+        "prompts_contain": [
+          "For billing and payments, press 1",
+          "ten digit account number",
+          "You entered 4 1 5 5 5 5 0 1 2 4"
+        ],
+        "nodes_visited_includes": ["main_menu", "collect_account_billing", "transfer_billing"],
+        "max_handle_time_seconds": 45
+      }
+    },
+    {
+      "name": "v1 speech: 'pay my bill' selects the billing option",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["speech:pay my bill", "dtmf:4155550124#", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "billing",
+        "nodes_visited_includes": ["collect_account_billing"]
+      }
+    },
+    {
+      "name": "v1 outage: a zip code in the outage set is contained",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:2", "dtmf:55505#"],
+      "expect": {
+        "outcome": "contained",
+        "final_node": "goodbye",
+        "prompts_contain": ["service outage in zip code 55505", "Goodbye"],
+        "nodes_visited_includes": ["collect_zip", "outage_check", "outage_known"],
+        "max_handle_time_seconds": 45
+      }
+    },
+    {
+      "name": "v1 outage: a zip code without an outage collects the account and transfers to tech support",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:2", "dtmf:55501#", "dtmf:4155550124#", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "tech_support",
+        "nodes_visited_includes": ["outage_branch", "collect_account_tech"]
+      }
+    },
+    {
+      "name": "v1 invalid account number is re-prompted, then a valid one is accepted",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:1", "dtmf:123#", "dtmf:4155550124#", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "billing",
+        "prompts_contain": [
+          "does not look like a valid account number",
+          "ten digit account number",
+          "You entered 4 1 5 5 5 5 0 1 2 4"
+        ]
+      }
+    },
+    {
+      "name": "v1 confirm: caller rejects the read-back and enters the number again",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:3", "dtmf:4155550207#", "dtmf:2", "dtmf:4155550124#", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "account_services",
+        "prompts_contain": [
+          "You entered 4 1 5 5 5 5 0 2 0 7",
+          "ten digit account number",
+          "You entered 4 1 5 5 5 5 0 1 2 4"
+        ]
+      }
+    },
+    {
+      "name": "v1 three menu timeouts fall back to the general queue",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["timeout", "timeout", "timeout"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "general",
+        "prompts_contain": ["I did not hear a selection", "I did not hear a selection"],
+        "nodes_visited_includes": ["transfer_general"],
+        "max_handle_time_seconds": 70
+      }
+    },
+    {
+      "name": "v1 caller hangs up at the main menu",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["hangup"],
+      "expect": {
+        "outcome": "abandoned",
+        "final_node": "main_menu",
+        "max_handle_time_seconds": 20
+      }
+    },
+    {
+      "name": "v1 asking for a person by speech goes straight to an agent",
+      "flow": "../care_v1.json",
+      "ani": "5550100999",
+      "inputs": ["speech:I want to talk to a person"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "general",
+        "max_handle_time_seconds": 25
+      }
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "name": "care",
+  "version": "2.0",
+  "description": "Self-service customer care flow. Known callers are identified by phone number and skip the account step. Balance, outage, data usage, payment arrangement and voicemail pin reset are handled in the IVR; an agent transfer remains available from every path.",
+  "start": "greeting",
+  "queues": ["billing", "tech_support", "account_services", "general"],
+  "nodes": {
+    "greeting": {
+      "type": "play",
+      "prompt": "Thank you for calling customer care. This call may be recorded.",
+      "next": "identify"
+    },
+    "identify": {
+      "type": "identify",
+      "on_found": "welcome_known",
+      "on_not_found": "main_menu"
+    },
+    "welcome_known": {
+      "type": "play",
+      "prompt": "Welcome back, {customer.first_name}.",
+      "next": "main_menu"
+    },
+    "main_menu": {
+      "type": "menu",
+      "prompt": "For your balance and billing, press 1. To check for a service outage, press 2. For data usage, press 3. To set up a payment arrangement, press 4. To reset your voicemail pin, press 5. To speak with an agent, press 0.",
+      "options": {
+        "1": {
+          "label": "Balance and billing",
+          "next": "need_account_billing",
+          "intents": ["billing", "bill", "balance", "statement", "charges", "how much do I owe"]
+        },
+        "2": {
+          "label": "Service outage",
+          "next": "need_zip_outage",
+          "intents": ["outage", "internet", "service", "not working", "tv", "down", "slow"]
+        },
+        "3": {
+          "label": "Data usage",
+          "next": "need_account_data",
+          "intents": ["data", "usage", "gigabytes"]
+        },
+        "4": {
+          "label": "Payment arrangement",
+          "next": "need_account_payment",
+          "intents": ["payment", "pay", "arrangement", "extension", "more time to pay"]
+        },
+        "5": {
+          "label": "Voicemail pin",
+          "next": "need_account_voicemail",
+          "intents": ["voicemail", "pin", "password", "mailbox"]
+        },
+        "0": {
+          "label": "Agent",
+          "next": "transfer_general",
+          "intents": ["agent", "representative", "person", "operator", "something else", "other"]
+        }
+      },
+      "invalid_prompt": "Sorry, that is not a valid option.",
+      "timeout_prompt": "I did not hear a selection.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_general",
+      "timeout_seconds": 5
+    },
+
+    "need_account_billing": {
+      "type": "branch",
+      "conditions": [{ "when": "account exists", "next": "balance" }],
+      "default": "collect_account_billing"
+    },
+    "collect_account_billing": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_billing",
+      "next": "balance"
+    },
+    "balance": {
+      "type": "action",
+      "name": "balance_inquiry",
+      "on_success": "balance_branch",
+      "on_failure": "transfer_billing"
+    },
+    "balance_branch": {
+      "type": "branch",
+      "conditions": [{ "when": "past_due == true", "next": "balance_past_due" }],
+      "default": "balance_ok"
+    },
+    "balance_ok": {
+      "type": "play",
+      "prompt": "Your current balance is {balance} dollars, due on {due_date}.",
+      "next": "after_balance_menu"
+    },
+    "balance_past_due": {
+      "type": "play",
+      "prompt": "Your balance of {balance} dollars was due on {due_date} and is past due.",
+      "next": "after_balance_menu"
+    },
+    "after_balance_menu": {
+      "type": "menu",
+      "prompt": "To set up a payment arrangement, press 1. To speak with an agent about your bill, press 2. If you are finished, press 3.",
+      "options": {
+        "1": {
+          "label": "Payment arrangement",
+          "next": "arrangement",
+          "intents": ["payment", "arrangement", "more time to pay", "pay"]
+        },
+        "2": {
+          "label": "Agent",
+          "next": "transfer_billing",
+          "intents": ["agent", "representative", "person", "question"]
+        },
+        "3": {
+          "label": "Finished",
+          "next": "goodbye",
+          "intents": ["finished", "done", "goodbye", "nothing else", "no thanks"]
+        }
+      },
+      "invalid_prompt": "Sorry, that is not a valid option.",
+      "timeout_prompt": "I did not hear a selection.",
+      "max_retries": 1,
+      "on_max_retries": "goodbye",
+      "timeout_seconds": 5
+    },
+
+    "need_account_payment": {
+      "type": "branch",
+      "conditions": [{ "when": "account exists", "next": "arrangement" }],
+      "default": "collect_account_payment"
+    },
+    "collect_account_payment": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_billing",
+      "next": "arrangement"
+    },
+    "arrangement": {
+      "type": "action",
+      "name": "payment_arrangement",
+      "on_success": "arrangement_ok",
+      "on_failure": "arrangement_failed"
+    },
+    "arrangement_ok": {
+      "type": "play",
+      "prompt": "Your payment arrangement is set. Your balance of {arrangement_amount} dollars is now due on {arrangement_date}.",
+      "next": "goodbye"
+    },
+    "arrangement_failed": {
+      "type": "play",
+      "prompt": "We could not set up a payment arrangement on this account. Let me connect you with a billing specialist.",
+      "next": "transfer_billing"
+    },
+
+    "need_zip_outage": {
+      "type": "branch",
+      "conditions": [{ "when": "zip exists", "next": "outage_check" }],
+      "default": "collect_zip"
+    },
+    "collect_zip": {
+      "type": "collect",
+      "prompt": "Please enter the five digit zip code of your service address, followed by the pound key.",
+      "variable": "zip",
+      "min_digits": 5,
+      "max_digits": 5,
+      "terminator": "#",
+      "validation": "digits",
+      "confirm": false,
+      "invalid_prompt": "That does not look like a five digit zip code.",
+      "timeout_prompt": "I did not get your zip code.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_tech",
+      "next": "outage_check"
+    },
+    "outage_check": {
+      "type": "action",
+      "name": "outage_check",
+      "on_success": "outage_branch",
+      "on_failure": "transfer_tech"
+    },
+    "outage_branch": {
+      "type": "branch",
+      "conditions": [{ "when": "outage == true", "next": "outage_known" }],
+      "default": "no_outage"
+    },
+    "outage_known": {
+      "type": "play",
+      "prompt": "We are aware of a service outage in zip code {zip}. Our technicians are working on it and expect service to be restored by {outage_eta}. We apologize for the inconvenience.",
+      "next": "goodbye"
+    },
+    "no_outage": {
+      "type": "play",
+      "prompt": "There are no reported outages in your area. Let me connect you with technical support.",
+      "next": "transfer_tech"
+    },
+
+    "need_account_data": {
+      "type": "branch",
+      "conditions": [{ "when": "account exists", "next": "data_usage" }],
+      "default": "collect_account_data"
+    },
+    "collect_account_data": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_account_services",
+      "next": "data_usage"
+    },
+    "data_usage": {
+      "type": "action",
+      "name": "data_usage",
+      "on_success": "data_result",
+      "on_failure": "transfer_account_services"
+    },
+    "data_result": {
+      "type": "play",
+      "prompt": "You have used {data_used_gb} of your {data_limit_gb} gigabytes this cycle, with {data_remaining_gb} gigabytes remaining.",
+      "next": "goodbye"
+    },
+
+    "need_account_voicemail": {
+      "type": "branch",
+      "conditions": [{ "when": "account exists", "next": "voicemail_reset" }],
+      "default": "collect_account_voicemail"
+    },
+    "collect_account_voicemail": {
+      "type": "collect",
+      "prompt": "Please enter your ten digit account number, followed by the pound key.",
+      "variable": "account",
+      "min_digits": 10,
+      "max_digits": 10,
+      "terminator": "#",
+      "validation": "account",
+      "confirm": true,
+      "invalid_prompt": "That does not look like a valid account number.",
+      "timeout_prompt": "I did not get your account number.",
+      "max_retries": 2,
+      "on_max_retries": "transfer_tech",
+      "next": "voicemail_reset"
+    },
+    "voicemail_reset": {
+      "type": "action",
+      "name": "reset_voicemail_pin",
+      "on_success": "voicemail_ok",
+      "on_failure": "transfer_tech"
+    },
+    "voicemail_ok": {
+      "type": "play",
+      "prompt": "Your voicemail pin has been reset to {voicemail_pin}. You will be asked to choose a new pin the next time you sign in.",
+      "next": "goodbye"
+    },
+
+    "transfer_billing": {
+      "type": "transfer",
+      "queue": "billing",
+      "priority": 3,
+      "reason": "billing_request"
+    },
+    "transfer_tech": {
+      "type": "transfer",
+      "queue": "tech_support",
+      "priority": 2,
+      "reason": "service_problem"
+    },
+    "transfer_account_services": {
+      "type": "transfer",
+      "queue": "account_services",
+      "priority": 3,
+      "reason": "plan_question"
+    },
+    "transfer_general": {
+      "type": "transfer",
+      "queue": "general",
+      "priority": 4,
+      "reason": "caller_request_or_fallback"
+    },
+    "goodbye": {
+      "type": "hangup",
+      "prompt": "Thank you for calling. Goodbye."
+    }
+  }
+}

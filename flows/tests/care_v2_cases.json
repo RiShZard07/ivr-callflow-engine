@@ -1,0 +1,193 @@
+{
+  "cases": [
+    {
+      "name": "v2 known caller hears the balance and finishes in the IVR",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["dtmf:1", "dtmf:3"],
+      "expect": {
+        "outcome": "contained",
+        "final_node": "goodbye",
+        "prompts_contain": [
+          "Welcome back, Avery",
+          "Your current balance is 87.50 dollars, due on 2026-10-15",
+          "Goodbye"
+        ],
+        "nodes_visited_includes": ["identify", "welcome_known", "balance", "after_balance_menu"],
+        "max_handle_time_seconds": 40
+      }
+    },
+    {
+      "name": "v2 unknown caller must enter the account number before the balance",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:1", "dtmf:4155550124#", "dtmf:1", "dtmf:3"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["ten digit account number", "Your current balance is 87.50"],
+        "nodes_visited_includes": ["collect_account_billing", "balance", "goodbye"]
+      }
+    },
+    {
+      "name": "v2 spoken digits are accepted at the account collect",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:1", "speech:four one five five five five zero one two four", "speech:yes that is right", "dtmf:3"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["You entered 4 1 5 5 5 5 0 1 2 4", "Your current balance is 87.50"]
+      }
+    },
+    {
+      "name": "v2 past-due caller who is not eligible for an arrangement is transferred to billing",
+      "flow": "../care_v2.json",
+      "ani": "5550100200",
+      "inputs": ["dtmf:1", "dtmf:1"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "billing",
+        "prompts_contain": [
+          "Welcome back, Jordan",
+          "was due on 2026-09-20 and is past due",
+          "could not set up a payment arrangement"
+        ],
+        "nodes_visited_includes": ["balance_past_due", "arrangement", "arrangement_failed"]
+      }
+    },
+    {
+      "name": "v2 eligible caller sets a payment arrangement by speech",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["speech:I need more time to pay"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["Your payment arrangement is set", "now due on 2026-10-29"],
+        "nodes_visited_includes": ["need_account_payment", "arrangement", "arrangement_ok"],
+        "max_handle_time_seconds": 35
+      }
+    },
+    {
+      "name": "v2 ambiguous speech is re-prompted, then a key press is accepted",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["speech:pay my bill", "dtmf:4"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["Sorry, that is not a valid option", "For your balance and billing", "Your payment arrangement is set"],
+        "nodes_visited_includes": ["arrangement_ok"]
+      }
+    },
+    {
+      "name": "v2 known caller in an outage zip is told about the outage",
+      "flow": "../care_v2.json",
+      "ani": "5550100200",
+      "inputs": ["dtmf:2"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["service outage in zip code 55505"],
+        "nodes_visited_includes": ["need_zip_outage", "outage_check", "outage_known"],
+        "max_handle_time_seconds": 35
+      }
+    },
+    {
+      "name": "v2 known caller with no outage is sent to tech support",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["speech:my internet is down"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "tech_support",
+        "prompts_contain": ["no reported outages"],
+        "nodes_visited_includes": ["no_outage"]
+      }
+    },
+    {
+      "name": "v2 unknown caller enters a zip code for the outage check",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:2", "dtmf:55509#"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["five digit zip code", "service outage in zip code 55509"],
+        "nodes_visited_includes": ["collect_zip"]
+      }
+    },
+    {
+      "name": "v2 data usage is read back to a known caller",
+      "flow": "../care_v2.json",
+      "ani": "5550100300",
+      "inputs": ["dtmf:3"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["You have used 410.70 of your 1000 gigabytes", "589.30 gigabytes remaining"],
+        "nodes_visited_includes": ["data_usage", "data_result"]
+      }
+    },
+    {
+      "name": "v2 voicemail pin reset succeeds for a caller with voicemail",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["dtmf:5"],
+      "expect": {
+        "outcome": "contained",
+        "prompts_contain": ["Your voicemail pin has been reset to"],
+        "nodes_visited_includes": ["voicemail_reset", "voicemail_ok"]
+      }
+    },
+    {
+      "name": "v2 voicemail pin reset fails without voicemail service and transfers to tech support",
+      "flow": "../care_v2.json",
+      "ani": "5550100300",
+      "inputs": ["dtmf:5"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "tech_support",
+        "nodes_visited_includes": ["voicemail_reset", "transfer_tech"]
+      }
+    },
+    {
+      "name": "v2 unknown caller abandons during account entry",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:3", "hangup"],
+      "expect": {
+        "outcome": "abandoned",
+        "final_node": "collect_account_data"
+      }
+    },
+    {
+      "name": "v2 silence after the balance ends the call politely",
+      "flow": "../care_v2.json",
+      "ani": "5550123456",
+      "inputs": ["dtmf:1", "timeout", "timeout"],
+      "expect": {
+        "outcome": "contained",
+        "final_node": "goodbye",
+        "prompts_contain": ["I did not hear a selection", "Goodbye"]
+      }
+    },
+    {
+      "name": "v2 pressing 0 reaches an agent from the main menu",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:0"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "general",
+        "max_handle_time_seconds": 25
+      }
+    },
+    {
+      "name": "v2 three wrong keys at the main menu fall back to the general queue",
+      "flow": "../care_v2.json",
+      "ani": "5550100999",
+      "inputs": ["dtmf:9", "dtmf:*", "dtmf:#"],
+      "expect": {
+        "outcome": "transferred",
+        "transfer_queue": "general",
+        "prompts_contain": ["Sorry, that is not a valid option", "Sorry, that is not a valid option"],
+        "max_handle_time_seconds": 70
+      }
+    }
+  ]
+}
